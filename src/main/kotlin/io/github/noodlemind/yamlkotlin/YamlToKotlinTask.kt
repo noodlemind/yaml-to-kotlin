@@ -48,7 +48,7 @@ abstract class YamlToKotlinTask : DefaultTask() {
     @get:Input
     var addKotlinxSerializationAnnotations: Boolean = false
 
-    @get:Input
+    @get:InputFile
     @get:Optional
     var configFile: File? = null
 
