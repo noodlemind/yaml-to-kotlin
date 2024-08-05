@@ -1,8 +1,9 @@
-import org.gradle.api.internal.plugins.PluginDescriptor
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_0
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask
+
 
 plugins {
-    kotlin("jvm") version "1.9.10"
+    kotlin("jvm") version "2.0.0"
     id("com.gradle.plugin-publish") version "1.2.1"
     `java-gradle-plugin`
     `maven-publish`
@@ -21,10 +22,9 @@ dependencies {
     implementation(kotlin("reflect"))
 
     implementation("org.yaml:snakeyaml:2.0")
-    implementation("com.squareup:kotlinpoet:1.14.2")
+    implementation("com.squareup:kotlinpoet:1.18.1")
 
     testImplementation(kotlin("test"))
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit5:1.9.10")
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
 }
 
@@ -36,10 +36,10 @@ java {
     withJavadocJar()
 }
 
-tasks.withType<KotlinCompile> {
-    kotlinOptions {
-        jvmTarget = "17"
-        freeCompilerArgs = listOf("-Xjsr305=strict")
+tasks.named("compileKotlin", KotlinCompilationTask::class.java) {
+    compilerOptions {
+        apiVersion.set(KOTLIN_2_0)
+        freeCompilerArgs.add("-Xjsr305=strict")
     }
 }
 
@@ -47,7 +47,7 @@ tasks.withType<ProcessResources> {
     duplicatesStrategy = DuplicatesStrategy.WARN
 }
 
-tasks.withType<GeneratePluginDescriptors>{
+tasks.withType<GeneratePluginDescriptors> {
     enabled = false
 }
 
