@@ -68,15 +68,21 @@ gradlePlugin {
 publishing {
     repositories {
         maven {
-            name = "localPluginRepository"
-            url = uri("../local-plugin-repository")
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/noodlemind/yaml-to-kotlin")
+            credentials {
+                username = System.getenv("GITHUB_ACTOR")
+                password = System.getenv("GITHUB_TOKEN")
+            }
         }
-    }
 
-    publications {
-        create<MavenPublication>("maven") {
-            artifactId = "yamlToKotlin"
-            from(components["java"])
+        publications {
+            create<MavenPublication>("maven") {
+                groupId = "io.github.noodlemind"
+                artifactId = "yaml-to-kotlin"
+                version = "1.0.0"
+                from(components["java"])
+            }
         }
     }
 }
