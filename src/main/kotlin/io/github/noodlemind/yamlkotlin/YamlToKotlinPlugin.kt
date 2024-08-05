@@ -43,9 +43,9 @@ class YamlToKotlinPlugin : Plugin<Project> {
             task.verbose = extension.verbose
         }
 
-        // Make sure the generate task runs before compilation, if the compileKotlin task exists
-//        project.afterEvaluate {
-//            project.tasks.findByName("compileKotlin")?.dependsOn("generateKotlinFromYaml")
-//        }
+        // Make sure the generate task runs before compilation if the compileKotlin task exists
+        project.afterEvaluate {
+            project.tasks.findByName("compileKotlin")?.dependsOn("generateKotlinFromYaml")
+        }
     }
 }
