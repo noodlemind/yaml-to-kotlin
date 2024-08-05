@@ -71,18 +71,18 @@ publishing {
             name = "GitHubPackages"
             url = uri("https://maven.pkg.github.com/noodlemind/yaml-to-kotlin")
             credentials {
-                username = System.getenv("GITHUB_ACTOR")
-                password = System.getenv("GITHUB_TOKEN")
+                username = project.findProperty("gpr.user") as String? ?: System.getenv("USERNAME")
+                password = project.findProperty("gpr.key") as String? ?: System.getenv("TOKEN")
             }
         }
+    }
 
-        publications {
-            create<MavenPublication>("maven") {
-                groupId = "io.github.noodlemind"
-                artifactId = "yaml-to-kotlin"
-                version = "1.0.0"
-                from(components["java"])
-            }
+    publications {
+        create<MavenPublication>("gpr") {
+            groupId = "io.github.noodlemind"
+            artifactId = "yaml-to-kotlin"
+            version = "1.0.0"
+            from(components["java"])
         }
     }
 }
