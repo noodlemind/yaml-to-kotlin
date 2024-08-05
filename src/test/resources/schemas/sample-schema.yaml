@@ -1,0 +1,67 @@
+# src/test/resources/test-schemas/sample-schema.yaml
+
+types:
+  EmployeeID:
+    base: integer
+    minimum: 1
+
+  NonEmptyString:
+    base: string
+    minLength: 1
+
+  Email:
+    base: string
+    validations:
+      - type: pattern
+        params:
+          regex: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+
+entities:
+  Employee:
+    properties:
+      id:
+        type: EmployeeID
+        required: true
+      name:
+        type: NonEmptyString
+        required: true
+      email:
+        type: Email
+        required: true
+      department:
+        type: EmployeeID
+        required: true
+        references:
+          entity: Department
+          property: id
+
+  Department:
+    properties:
+      id:
+        type: EmployeeID
+        required: true
+      name:
+        type: NonEmptyString
+        required: true
+      employees:
+        type: array
+        itemType: EmployeeID
+        references:
+          entity: Employee
+          property: id
+
+validations:
+  - name: range
+    params:
+      - min
+      - max
+  - name: pattern
+    params:
+      - regex
+  - name: custom
+    params:
+      - validationFunction
+
+customValidations:
+  - name: validateCustomLogic
+    description: "Custom validation logic to be implemented in Kotlin"

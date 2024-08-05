@@ -1,0 +1,1 @@
+rootProject.name = "yaml-to-kotlin-plugin"
