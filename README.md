@@ -25,9 +25,8 @@ type-safe Kotlin data classes, complete with validation, from your YAML schema d
 
 ```kotlin
 plugins {
-    id("io.github.noodlemind.yaml-to-kotlin") version "1.0.0"
+    id("io.github.noodlemind.yaml-to-kotlin") version "2.0.0"
 }
-
 ```
 
 ## Usage
@@ -44,7 +43,23 @@ plugins {
 
 ## YAML Schema Standards
 
-Your YAML schemas should follow these standards:
+Your YAML schemas should follow these standards & structure:
+
+#### Base Structure:
+
+```yaml
+ObjectName:
+  type: object
+  properties:
+    propertyName:
+      type: string|integer|number|boolean
+      required: true|false
+      validate:
+        - pattern: isLetter|isNumeric|minLength|maxLength|regex
+          value: <validation-value>
+```
+
+#### Standards / Options:
 
 | Section                          | Attribute    | Type             | Description                                   | Required                      |
 |----------------------------------|--------------|------------------|-----------------------------------------------|-------------------------------|
@@ -81,76 +96,78 @@ Your YAML schemas should follow these standards:
 #### Employee Data Class
 
 ```yaml
-types:
-  EmployeeID:
-    base: integer
-    minimum: 1
+Template: 'v1.0.0'
+Metadata:
+   name: 'Complex Employee Data Template'
+   description: 'Schema for detailed employee information'
 
-  NonEmptyString:
-    base: string
-    minLength: 1
+Components:
+   Schemas:
+      Email:
+         type: string
+         format: email
 
-  Email:
-    base: string
-    pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+      Department:
+         type: string
+         enum:
+            - SALES
+            - MARKETING
+            - HR
+            - IT
+            - FINANCE
 
-entities:
-  Employee:
-    properties:
-      id:
-        type: EmployeeID
-        required: true
-      name:
-        type: NonEmptyString
-        required: true
-      email:
-        type: Email
-        required: true
-      department:
-        type: DepartmentID
-        required: true
-        references:
-          entity: Department
-          property: id
+      Address:
+         type: object
+         properties:
+            street:
+               type: string
+               validate:
+                  - pattern: minLength
+                    value: 2
+            zipCode:
+               type: string
+               validate:
+                  - pattern: isNumeric
+            country:
+               type: string
+               validate:
+                  - pattern: isLetter
 
-validations:
-  - name: range
-    params:
-      - min
-      - max
-  - name: emailFormat
-```
-
-#### Department Data Class
-
-```yaml
-types:
-  DepartmentID:
-    base: integer
-    minimum: 1
-
-  NonEmptyString:
-    base: string
-    minLength: 1
-
-entities:
-  Department:
-    properties:
-      id:
-        type: DepartmentID
-        required: true
-      name:
-        type: NonEmptyString
-        required: true
-      employees:
-        type: array
-        itemType: EmployeeID
-        references:
-          entity: Employee
-          property: id
-
-validations:
-  - name: uniqueDepartmentName
+      Employee:
+         type: object
+         properties:
+            firstName:
+               type: string
+               required: true
+               validate:
+                  - pattern: isLetter
+            lastName:
+               type: string
+               required: true
+               validate:
+                  - pattern: isLetter
+            email:
+               $ref: '#/Components/Schemas/Email'
+            departmentName:
+               $ref: '#/Components/Schemas/Department'
+            jobTitle:
+               type: string
+               validate:
+                  - pattern: isLetter
+            reportsTo:
+               $ref: '#/Components/Schemas/Email'
+            phoneNumber:
+               type: string
+               validate:
+                  - pattern: regex
+                    value: '^[0-9]{10}$'
+            AddressDetails:
+               type: object
+               properties:
+                  HomeAddress:
+                     $ref: '#/Components/Schemas/Address'
+                  OfficeAddress:
+                     $ref: '#/Components/Schemas/Address'
 ```
 
 ## Contributing

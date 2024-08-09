@@ -1,78 +1,147 @@
 package io.github.noodlemind.yamlkotlin
 
+import org.gradle.api.Project
 import org.gradle.testfixtures.ProjectBuilder
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
-import kotlin.test.assertTrue
 
 class YamlToKotlinTaskTest {
 
-    private lateinit var project: org.gradle.api.Project
     private lateinit var task: YamlToKotlinTask
+    private lateinit var project: Project
 
     @TempDir
     lateinit var testProjectDir: File
 
     @BeforeEach
     fun setup() {
-        project = ProjectBuilder.builder().withProjectDir(testProjectDir).build()
+        project = ProjectBuilder.builder().build()
+        task = project.tasks.create("generateKotlin", YamlToKotlinTask::class.java)
 
-        // Apply the plugin
-        project.pluginManager.apply("io.github.noodlemind.yaml-to-kotlin")
+        val inputDir = testProjectDir.resolve("input")
+        val outputDir = testProjectDir.resolve("output")
 
-        // Get the task
-        task = project.tasks.getByName("generateKotlinFromYaml") as YamlToKotlinTask
+        task.inputDir.set(inputDir)
+        task.outputDir.set(outputDir)
+        task.packageName = "com.example.generated"
+        task.schemaFileExtension = "yml"
 
-        // Configure the task
-        task.inputDir.set(File(testProjectDir, "schemas"))
-        task.outputDir.set(File(testProjectDir, "generated"))
-        task.packageName = "com.example.test"
+        println("Current working directory: ${System.getProperty("user.dir")}")
+        println("Input directory: ${inputDir.absolutePath}")
+        println("Output directory: ${outputDir.absolutePath}")
 
-        // Create the input directory
-        File(testProjectDir, "schemas").mkdirs()
-
-        // Copy the test schema to the test project directory
-        val sourceSchema = File(javaClass.classLoader.getResource("schemas/sample-schema.yaml")?.file ?: "")
-        if (sourceSchema.exists()) {
-            val targetSchema = File(testProjectDir, "schemas/sample-schema.yaml")
-            sourceSchema.copyTo(targetSchema)
+        // Copy the sample schema to the input directory
+        val sampleSchemaResource = javaClass.classLoader.getResource("schemas/sample-schema.yml")
+        if (sampleSchemaResource == null) {
+            fail("schemas/sample-schema.yml not found in resources")
         } else {
-            throw IllegalStateException("Test schema file not found")
+            println("Found sample-schema.yml at: ${sampleSchemaResource.path}")
+            val sampleSchemaContent = sampleSchemaResource.readText()
+            inputDir.mkdirs()
+            val targetFile = inputDir.resolve("sample-schema.yml")
+            targetFile.writeText(sampleSchemaContent)
+            println("Copied sample-schema.yml to: ${targetFile.absolutePath}")
         }
     }
 
     @Test
-    fun testComplexSchemaGeneration() {
-        println("Test project directory: ${testProjectDir.absolutePath}")
-        println("Input directory: ${task.inputDir.get().asFile.absolutePath}")
-        println("Output directory: ${task.outputDir.get().asFile.absolutePath}")
-        println("Package name: ${task.packageName}")
-
-        // List files in the input directory
-        println("Files in input directory:")
-        task.inputDir.get().asFile.walkTopDown().filter { it.isFile }.forEach { println(it.absolutePath) }
-
+    fun `test YAML parsing and Kotlin generation`() {
+        // Act
         task.generateKotlin()
 
-        // List files in the output directory
-        println("Files in output directory:")
-        task.outputDir.get().asFile.walkTopDown().filter { it.isFile }.forEach { println(it.absolutePath) }
+        // Assert
+        val outputDir = task.outputDir.get().asFile
+        assertTrue(outputDir.exists(), "Output directory should exist")
 
-        val generatedFile = File(testProjectDir, "generated/com/example/test/SampleSchema.kt")
-        println("Expected generated file: ${generatedFile.absolutePath}")
-        println("Generated file exists: ${generatedFile.exists()}")
+        // Check for generated files
+        assertTrue(outputDir.resolve("Employee.kt").exists(), "Employee.kt should be generated")
+        assertTrue(outputDir.resolve("Address.kt").exists(), "Address.kt should be generated")
+        assertTrue(outputDir.resolve("Department.kt").exists(), "Department.kt should be generated")
 
-        assertTrue(generatedFile.exists(), "Generated Kotlin file should exist")
+        // Check Employee.kt content
+        val employeeContent = outputDir.resolve("Employee.kt").readText()
+        assertTrue(employeeContent.contains("data class Employee"), "Employee class should be generated")
+        assertTrue(employeeContent.contains("val firstName: String"), "firstName property should be present")
+        assertTrue(employeeContent.contains("val lastName: String"), "lastName property should be present")
+        assertTrue(employeeContent.contains("val email: String?"), "email property should be present")
+        assertTrue(employeeContent.contains("val departmentName: Department?"), "departmentName property should be present")
+        assertTrue(employeeContent.contains("val jobTitle: String?"), "jobTitle property should be present")
+        assertTrue(employeeContent.contains("val reportsTo: String?"), "reportsTo property should be present")
+        assertTrue(employeeContent.contains("val phoneNumber: String?"), "phoneNumber property should be present")
+        assertTrue(employeeContent.contains("val addressDetails: AddressDetails?"), "addressDetails property should be present")
 
-        if (generatedFile.exists()) {
-            val content = generatedFile.readText()
-            println("Generated file content:\n$content")
+        // Check Address.kt content
+        val addressContent = outputDir.resolve("Address.kt").readText()
+        assertTrue(addressContent.contains("data class Address"), "Address class should be generated")
+        assertTrue(addressContent.contains("val street: String?"), "street property should be present")
+        assertTrue(addressContent.contains("val zipCode: String?"), "zipCode property should be present")
+        assertTrue(addressContent.contains("val country: String?"), "country property should be present")
 
-            assertTrue(content.contains("package com.example.test"), "Package declaration should be present")
-            assertTrue(content.contains("data class SampleSchema"), "SampleSchema class should be present")
-        }
+        // Check Department.kt content
+        val departmentContent = outputDir.resolve("Department.kt").readText()
+        assertTrue(departmentContent.contains("enum class Department"), "Department enum should be generated")
+        assertTrue(departmentContent.contains("SALES"), "SALES enum value should be present")
+        assertTrue(departmentContent.contains("MARKETING"), "MARKETING enum value should be present")
+        assertTrue(departmentContent.contains("HR"), "HR enum value should be present")
+        assertTrue(departmentContent.contains("IT"), "IT enum value should be present")
+        assertTrue(departmentContent.contains("FINANCE"), "FINANCE enum value should be present")
+
+        // Check for validations
+        assertTrue(employeeContent.contains("@Validate\\(\"isLetter\\(\\)\"\\)".toRegex()), "isLetter validation should be present for firstName")
+        assertTrue(employeeContent.contains("@Validate\\(\"isLetter\\(\\)\"\\)".toRegex()), "isLetter validation should be present for lastName")
+        assertTrue(employeeContent.contains("@Validate\\(\"isLetter\\(\\)\"\\)".toRegex()), "isLetter validation should be present for jobTitle")
+        assertTrue(employeeContent.contains("@Validate\\(\"regex\\(.*\\)\"\\)".toRegex()), "regex validation should be present for phoneNumber")
+        assertTrue(addressContent.contains("@Validate\\(\"minLength\\(2\\)\"\\)".toRegex()), "minLength validation should be present for street")
+        assertTrue(addressContent.contains("@Validate\\(\"isNumeric\\(\\)\"\\)".toRegex()), "isNumeric validation should be present for zipCode")
+        assertTrue(addressContent.contains("@Validate\\(\"isLetter\\(\\)\"\\)".toRegex()), "isLetter validation should be present for country")
+
     }
 
+    @Test
+    fun `test empty input directory`() {
+        // Arrange
+        task.inputDir.get().asFile.deleteRecursively()
+        task.inputDir.get().asFile.mkdirs()
+
+        // Act
+        task.generateKotlin()
+
+        // Assert
+        val outputDir = task.outputDir.get().asFile
+        assertTrue(outputDir.exists(), "Output directory should exist even with empty input")
+        assertTrue(outputDir.listFiles()?.isEmpty() ?: true, "No files should be generated for empty input")
+    }
+
+    @Test
+    fun `test custom package name`() {
+        // Arrange
+        task.packageName = "com.custom.mypackage"
+
+        // Act
+        task.generateKotlin()
+
+        // Assert
+        val outputDir = task.outputDir.get().asFile
+        val employeeContent = File(outputDir, "Employee.kt").readText()
+        assertTrue(employeeContent.contains("package com.custom.mypackage"), "Custom package name should be used")
+    }
+
+    @Test
+    fun `test custom file extension`() {
+        // Arrange
+        task.schemaFileExtension = "yaml"
+        val inputDir = task.inputDir.get().asFile
+        inputDir.resolve("sample-schema.yml").renameTo(inputDir.resolve("sample-schema.yaml"))
+
+        // Act
+        task.generateKotlin()
+
+        // Assert
+        val outputDir = task.outputDir.get().asFile
+        assertTrue(outputDir.resolve("Employee.kt").exists(), "Should process files with custom extension")
+    }
 }

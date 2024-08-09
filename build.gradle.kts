@@ -10,7 +10,8 @@ plugins {
 }
 
 group = "io.github.noodlemind"
-version = "1.0.1"
+version = "1.1.0"
+
 
 repositories {
     mavenCentral()
@@ -18,14 +19,15 @@ repositories {
 
 dependencies {
     implementation(gradleApi())
-    implementation(kotlin("stdlib-jdk8"))
-    implementation(kotlin("reflect"))
+    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.0.0")
+    implementation("org.jetbrains.kotlin:kotlin-reflect:2.0.0")
 
     implementation("org.yaml:snakeyaml:2.0")
     implementation("com.squareup:kotlinpoet:1.18.1")
 
-    testImplementation(kotlin("test"))
-    testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
+    testImplementation("org.jetbrains.kotlin:kotlin-test:1.9.24")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.3")
+    testImplementation(gradleTestKit())
 }
 
 java {

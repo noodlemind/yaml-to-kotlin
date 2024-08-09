@@ -1,0 +1,72 @@
+Template: 'v1.0.0'
+Metadata:
+  name: 'Complex Employee Data Template'
+  description: 'Schema for detailed employee information'
+
+Components:
+  Schemas:
+    Email:
+      type: string
+      format: email
+
+    Department:
+      type: string
+      enum:
+        - SALES
+        - MARKETING
+        - HR
+        - IT
+        - FINANCE
+
+    Address:
+      type: object
+      properties:
+        street:
+          type: string
+          validate:
+            - pattern: minLength
+              value: 2
+        zipCode:
+          type: string
+          validate:
+            - pattern: isNumeric
+        country:
+          type: string
+          validate:
+            - pattern: isLetter
+
+    Employee:
+      type: object
+      properties:
+        firstName:
+          type: string
+          required: true
+          validate:
+            - pattern: isLetter
+        lastName:
+          type: string
+          required: true
+          validate:
+            - pattern: isLetter
+        email:
+          $ref: '#/Components/Schemas/Email'
+        departmentName:
+          $ref: '#/Components/Schemas/Department'
+        jobTitle:
+          type: string
+          validate:
+            - pattern: isLetter
+        reportsTo:
+          $ref: '#/Components/Schemas/Email'
+        phoneNumber:
+          type: string
+          validate:
+            - pattern: regex
+              value: '^[0-9]{10}$'
+        AddressDetails:
+          type: object
+          properties:
+            HomeAddress:
+              $ref: '#/Components/Schemas/Address'
+            OfficeAddress:
+              $ref: '#/Components/Schemas/Address'
