@@ -25,7 +25,7 @@ type-safe Kotlin data classes, complete with validation, from your YAML schema d
 
 ```kotlin
 plugins {
-    id("io.github.noodlemind.yaml-to-kotlin") version "2.0.0"
+    id("io.github.noodlemind.yaml-to-kotlin") version "1.1.0"
 }
 ```
 
