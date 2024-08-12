@@ -486,7 +486,9 @@ abstract class YamlToKotlinTask : DefaultTask() {
         val generatedFiles = mutableListOf<File>()
         schemas?.forEach { (className, attributes) ->
             if (attributes is Map<*, *> && attributes["type"] == "object") {
-                val typeSpecBuilder = createClassBuilder(className)
+                val typeSpecBuilder = TypeSpec.classBuilder(className).addModifiers(KModifier.DATA)
+                    .addAnnotation(ClassName("kotlinx.serialization", "Serializable"))
+                val constructorBuilder = FunSpec.constructorBuilder()
                 val propertiesSpec = attributes["properties"] as? Map<*, *>
                 propertiesSpec?.forEach { (propertyName, propertyDefinition) ->
                     if (propertyDefinition is Map<*, *>) {
@@ -494,10 +496,12 @@ abstract class YamlToKotlinTask : DefaultTask() {
                         val propertySpec =
                             createProperty(propertyName.toString(), resolvedDefinition, packageName, anchorMap)
                         typeSpecBuilder.addProperty(propertySpec)
+                        constructorBuilder.addParameter(propertyName.toString(), propertySpec.type)
                     }
                 }
+                typeSpecBuilder.primaryConstructor(constructorBuilder.build())
                 val fileSpec = FileSpec.builder(packageName, className).addType(typeSpecBuilder.build())
-                    .addImport("$packageName.Validate", "").addImport("kotlinx.serialization", "Serializable").build()
+                    .addImport("$packageName", "Validate").addImport("kotlinx.serialization", "Serializable").build()
                 val file = File(outputDir, "$className.kt")
                 file.parentFile.mkdirs()
                 file.writeText(fileSpec.toString())
@@ -585,11 +589,9 @@ abstract class YamlToKotlinTask : DefaultTask() {
                 val refKey = refPath.split("/").last()
                 anchorMap[refKey] ?: throw IllegalArgumentException("Unknown reference: $refPath")
             }
-
             propertyDefinition["type"] == "object" -> {
                 ClassName(packageName, key.capitalize())
             }
-
             else -> when (val type = propertyDefinition["type"]) {
                 "string" -> STRING
                 "integer" -> INT
@@ -605,15 +607,11 @@ abstract class YamlToKotlinTask : DefaultTask() {
         val propertyName = key.replaceFirstChar { it.lowercase() }
         val propertyBuilder =
             PropertySpec.builder(propertyName, kotlinType).initializer(propertyName).addModifiers(KModifier.OVERRIDE)
-
-        // Handle validations
         val validate = propertyDefinition["validate"] as? List<Map<String, Any>>
-        println("Validate for $key: $validate")
         if (validate != null) {
             val constraints = validate.mapNotNull { validation ->
                 val pattern = validation["pattern"] as? String
                 val value = validation["value"]
-                println("Processing validation for $key: pattern=$pattern, value=$value")
                 when (pattern) {
                     "isLetter" -> "isLetter()"
                     "isNumeric" -> "isNumeric()"
@@ -621,25 +619,20 @@ abstract class YamlToKotlinTask : DefaultTask() {
                     "maxLength" -> "maxLength($value)"
                     "regex" -> {
                         val escapedRegex = value.toString()
-                            .replace("\\", "\\\\")  // Escape backslashes
-                            .replace("\"", "\\\"")  // Escape double quotes
-                            .replace("$", "\\$")    // Escape dollar signs
+                            .replace("\\", "\\\\")
+                            .replace("\"", "\\\"")
                         "regex(\"$escapedRegex\")"
                     }
-
                     else -> null
                 }
             }
-            println("Generated constraints for $key: $constraints")
             if (constraints.isNotEmpty()) {
                 propertyBuilder.addAnnotation(
                     AnnotationSpec.builder(ClassName("", "Validate"))
                         .addMember(constraints.joinToString(", ") { "\"$it\"" }).build()
                 )
-                println("Added @Validate annotation for $key with constraints: ${constraints.joinToString(", ")}")
             }
         }
-
         return propertyBuilder.build()
     }
 
