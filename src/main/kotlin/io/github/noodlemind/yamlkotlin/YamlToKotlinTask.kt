@@ -496,12 +496,11 @@ abstract class YamlToKotlinTask : DefaultTask() {
                         typeSpecBuilder.addProperty(propertySpec)
                     }
                 }
-                val fileSpec = FileSpec.builder(packageName, className).addType(typeSpecBuilder.build()).build()
+                val fileSpec = FileSpec.builder(packageName, className).addType(typeSpecBuilder.build())
+                    .addImport("$packageName.Validate", "").addImport("kotlinx.serialization", "Serializable").build()
                 val file = File(outputDir, "$className.kt")
                 file.parentFile.mkdirs()
                 file.writeText(fileSpec.toString())
-                println("Generated file content for $className:")
-                println(file.readText())
                 generatedFiles.add(file)
             }
         }
@@ -560,6 +559,7 @@ abstract class YamlToKotlinTask : DefaultTask() {
      */
     private fun createClassBuilder(className: String): TypeSpec.Builder {
         return TypeSpec.classBuilder(className).addModifiers(KModifier.DATA)
+            .addAnnotation(AnnotationSpec.builder(ClassName("kotlinx.serialization", "Serializable")).build())
             .primaryConstructor(FunSpec.constructorBuilder().build())
     }
 
@@ -603,7 +603,8 @@ abstract class YamlToKotlinTask : DefaultTask() {
         val isRequired = propertyDefinition["required"] as? Boolean == true
         val kotlinType = propertyType.copy(nullable = !isRequired)
         val propertyName = key.replaceFirstChar { it.lowercase() }
-        val propertyBuilder = PropertySpec.builder(propertyName, kotlinType).initializer(propertyName)
+        val propertyBuilder =
+            PropertySpec.builder(propertyName, kotlinType).initializer(propertyName).addModifiers(KModifier.OVERRIDE)
 
         // Handle validations
         val validate = propertyDefinition["validate"] as? List<Map<String, Any>>
@@ -715,13 +716,13 @@ abstract class YamlToKotlinTask : DefaultTask() {
                                             constraint.startsWith("minLength") -> {
                                                 val minLength = constraint.substringAfter("minLength(").substringBefore(")").toInt()
                                                 if (value is String && value.length < minLength) {
-                                                    errors.add(ValidationError(property.name, "Must be at least ${'$'}minLength characters long"))
+                                                    errors.add(ValidationError(property.name, "Must be at least ${'$'}{minLength} characters long"))
                                                 }
                                             }
                                             constraint.startsWith("maxLength") -> {
                                                 val maxLength = constraint.substringAfter("maxLength(").substringBefore(")").toInt()
                                                 if (value is String && value.length > maxLength) {
-                                                    errors.add(ValidationError(property.name, "Must not exceed ${'$'}maxLength characters"))
+                                                    errors.add(ValidationError(property.name, "Must not exceed ${'$'}{maxLength} characters"))
                                                 }
                                             }
                                             constraint.startsWith("regex") -> {
@@ -786,7 +787,6 @@ abstract class YamlToKotlinTask : DefaultTask() {
         file.writeText(fileSpec.toString())
         return file
     }
-
 
     /**
      * Converts a map with keys of any type and values of any type to a map with keys of type String
