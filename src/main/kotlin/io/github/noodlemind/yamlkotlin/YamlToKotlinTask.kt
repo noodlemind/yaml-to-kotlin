@@ -619,7 +619,14 @@ abstract class YamlToKotlinTask : DefaultTask() {
                     "isNumeric" -> "isNumeric()"
                     "minLength" -> "minLength($value)"
                     "maxLength" -> "maxLength($value)"
-                    "regex" -> "regex(\"$value\")"
+                    "regex" -> {
+                        val escapedRegex = value.toString()
+                            .replace("\\", "\\\\")  // Escape backslashes
+                            .replace("\"", "\\\"")  // Escape double quotes
+                            .replace("$", "\\$")    // Escape dollar signs
+                        "regex(\"$escapedRegex\")"
+                    }
+
                     else -> null
                 }
             }
