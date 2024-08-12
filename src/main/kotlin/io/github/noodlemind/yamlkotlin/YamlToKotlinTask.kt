@@ -589,9 +589,11 @@ abstract class YamlToKotlinTask : DefaultTask() {
                 val refKey = refPath.split("/").last()
                 anchorMap[refKey] ?: throw IllegalArgumentException("Unknown reference: $refPath")
             }
+
             propertyDefinition["type"] == "object" -> {
                 ClassName(packageName, key.capitalize())
             }
+
             else -> when (val type = propertyDefinition["type"]) {
                 "string" -> STRING
                 "integer" -> INT
@@ -618,17 +620,18 @@ abstract class YamlToKotlinTask : DefaultTask() {
                     "minLength" -> "minLength($value)"
                     "maxLength" -> "maxLength($value)"
                     "regex" -> {
-                        val escapedRegex = value.toString()
-                            .replace("\\", "\\\\")
-                            .replace("\"", "\\\"")
-                        "regex(\"$escapedRegex\")"
+                        val regexValue = validation["value"] as? String
+                        regexValue?.let {
+                            val escapedRegex = it.replace("\\", "\\\\").replace("\"", "\\\"")
+                            "regex(\"$escapedRegex\")"
+                        }
                     }
                     else -> null
                 }
             }
             if (constraints.isNotEmpty()) {
                 propertyBuilder.addAnnotation(
-                    AnnotationSpec.builder(ClassName("", "Validate"))
+                    AnnotationSpec.builder(ClassName(packageName, "Validate"))
                         .addMember(constraints.joinToString(", ") { "\"$it\"" }).build()
                 )
             }
@@ -726,8 +729,8 @@ abstract class YamlToKotlinTask : DefaultTask() {
                                                 }
                                             }
                                             constraint.startsWith("regex") -> {
-                                                val pattern = constraint.substringAfter("regex(\"").substringBefore("\")").toRegex()
-                                                if (value is String && !pattern.matches(value)) {
+                                                val regex = constraint.substringAfter("regex(").substringBefore(")")
+                                                if (value is String && !Regex(regex).matches(value)) {
                                                     errors.add(ValidationError(property.name, "Does not match the required pattern"))
                                                 }
                                             }
